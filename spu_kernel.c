@@ -5,7 +5,8 @@
 
 
 void multiply(vec_short8 *a, vec_short8 *b, vec_int4 *t, vec_int4*, vec_int4*, vec_int4*);
-void calc_carry(vec_int4 *t);
+void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w);
+void combine_16bit(int32_t *data, int32_t *result);
 
 int main(unsigned long long spu_id, unsigned long long argp, unsigned long long envp){
 
@@ -46,7 +47,7 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 
 	// ##########  ############
 
-
+	calc_carry(t, u, v, w);
 
 	free(t);	
 
@@ -134,19 +135,50 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 }
 
 
-void calc_carry(vec_int4 *t){
+void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w){
 
 	vec_short8 *t_short = (vec_short8 *)&t[0][0];
+	vec_short8 *u_short = (vec_short8 *)&u[0][0];
+	vec_short8 *v_short = (vec_short8 *)&v[0][0];
+	vec_short8 *w_short = (vec_short8 *)&w[0][0];
+	
 	int32_t tmp = 0;
 	int32_t and12 = 0xfff;
 
 	int i;
 	int digits = 16;
-	for(i=0; i<=digits; i++){
+
+	// 0
+	tmp = t[0][0];
+	t_short[0][0] = t[0][0] & and12;
+	tmp >>= 12;
+
+	// 1
+	tmp += t[0][1] + u[0][0];
+	t_short[0][1] = tmp & and12;
+	tmp >>= 12;
+
+	// 2
+	tmp += t[0][2] + u[0][1] + v[0][0];
+	t_short[0][2] = tmp & and12;
+	tmp >>= 12;
+
+	// 3
+	tmp += t[0][3] + u[0][2] + v[0][1] + w[0][0];
+	t_short[0][3] = tmp & and12;
+	tmp >>= 12;
+
+	for(i=4; i<=digits; i++){
 		
-		tmp += t[0][i];
-		t_short[0][i] = t[0][i] & and12;
+		tmp += t[0][i] + u[0][i-1] + v[0][i-2] + w[0][i-3];
+		t_short[0][i] = tmp & and12;
 		tmp >>= 12;
 	}
+	
+}
+
+
+void combine_16bit(int32_t *data, int32_t *result){
+
 	
 }
