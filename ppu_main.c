@@ -44,11 +44,20 @@ int main(unsigned long long spe_id, unsigned long long argp, unsigned long long 
 	srand(time(NULL));
 
 	int i, j;
-	for(i=0; i<16; i++){
-		a[i] = 0x11111111 * i;
-		b[i] = 0x11111111 * i;
+	for(i=0; i<4; i++){
+		a[i] = 0x11111111;
+		b[i] = 0x11111111;
 	}
 
+	printf("a = ");
+	for(i=3; i>=0; i--)
+		printf("%08x ", a[i]);
+	puts("");
+	
+	printf("b = ");
+	for(i=3; i>=0; i--)
+		printf("%08x ", b[i]);
+	puts("");
 
 	spe = spe_context_create(0, NULL);
 
@@ -63,12 +72,15 @@ int main(unsigned long long spe_id, unsigned long long argp, unsigned long long 
 	retval = spe_context_run(spe, &entry_point, 0, a, NULL, &stop_info);
 	if(retval < 0)
 		error_ret("spe_contect_run");
-	
+
+	for(i=0; i<16; i++)
+		printf("%d : %x\n", i, a[i]);
 
 	entry_point = SPE_DEFAULT_ENTRY;
 	retval = spe_context_run(spe, &entry_point, 0, b, NULL, &stop_info);
 	if(retval < 0)
 		error_ret("spe_contect_run");
+
 	
 /*
 	puts("##### Here's PPU space #####");
@@ -90,7 +102,13 @@ int main(unsigned long long spe_id, unsigned long long argp, unsigned long long 
 	if(retval < 0)
 		error_ret("spe_context_run");
 	
+	
+	printf("0x");
+	for(i=7; i>=0; i--)
+		printf("%08x", t[i]);
+	puts("");
 
+	puts("0x123456789abcdf0123456789abcdf0120fedcba987654320fedcba987654321");
 
 	retval = spe_context_destroy(spe);
 	if(retval)
