@@ -21,7 +21,7 @@ $(SPUOBJ):
 	$(EMB) -m64 $(SPUPROG) $(SPUPROG) $(SPUOBJ)
 
 $(SPUOBJ2):
-	$(SPUCC) $(SPUPROG2).c -o $(SPUPROG2)
+	$(SPUCC)  $(SPUPROG2).c -o $(SPUPROG2)
 	$(EMB) -m64 $(SPUPROG2) $(SPUPROG2) $(SPUOBJ2)
 
 clean:

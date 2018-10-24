@@ -6,15 +6,17 @@
 
 void multiply(vec_short8 *a, vec_short8 *b, vec_int4 *t, vec_int4*, vec_int4*, vec_int4*);
 void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w);
-void combine_16bit(int32_t *data, int32_t *result);
+//void combine_16bit(int32_t *data, int32_t *result);
+void combine_16bit(vec_int4 *data, int32_t *result);
 
 int main(unsigned long long spu_id, unsigned long long argp, unsigned long long envp){
 
 	vec_short8 a[256] __attribute__ ((aligned(128)));
 	vec_short8 b[256] __attribute__ ((aligned(128)));
-	vec_int4 *t __attribute__ ((aligned(128)));
+	int32_t *t __attribute__ ((aligned(128)));
 
 	t = calloc(512*16, sizeof(long));
+	vec_int4 *t_tmp = calloc(512*16, sizeof(long));
 	vec_int4 *u = calloc(512*16, sizeof(long));
 	vec_int4 *v = calloc(512*16, sizeof(long));
 	vec_int4 *w = calloc(512*16, sizeof(long));
@@ -37,19 +39,29 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 
 	int digits = 16;
 	for(i=0; i<digits; i+=2){
-		multiply(a+i, b+i, t+i, u+i, v+i, w+i);
+		multiply(a+i, b+i, t_tmp+i, u+i, v+i, w+i);
 	}
 
 	for(i=0; i<8; i++){
-		printf("%x ", t[0][i]);
+		printf("%x ", t_tmp[0][i]);
 	}
 	puts("");
 
 	// ##########  ############
 
-	calc_carry(t, u, v, w);
+	calc_carry(t_tmp, u, v, w);
+
+	combine_16bit(t_tmp, t);
+
+	mfc_put(t, argp, sizeof(t), 0, 0, 0);
+	mfc_write_tag_mask(1<<0);
+	mfc_read_tag_status_all();
 
 	free(t);	
+	free(t_tmp);	
+	free(u);	
+	free(v);	
+	free(w);	
 
 	return 0;
 }
@@ -178,7 +190,71 @@ void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w){
 }
 
 
-void combine_16bit(int32_t *data, int32_t *result){
+//void combine_16bit(int32_t *data, int32_t *result){
+void combine_16bit(vec_int4 *data, int32_t *result){
 
+	vec_int4 and1 = {0, 0, 0, 0xfff};
+	vec_int4 and2 = {0, 0, 0, 0xfff0000};
+	vec_int4 and3 = {0, 0, 0xfff, 0};
+	vec_int4 and4 = {0, 0, 0xfff0000, 0};
+	vec_int4 and5 = {0, 0xfff, 0, 0};
+	vec_int4 and6 = {0, 0xfff0000, 0, 0};
+	vec_int4 and7 = {0xfff, 0, 0, 0};
+	vec_int4 and8 = {0xfff0000, 0, 0, 0};
+
+	int i, j;
+	int digits = 16;
+
+	vec_int4 tmp, res;
 	
+	for(i=0, j=0; j<digits; i++, j+=3){
+
+		vec_int4 vector = data[i];
+
+		// 0
+		res = spu_and(and1, vector);
+
+		// 1
+		tmp = spu_and(and2, vector);
+		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
+		res = spu_xor(tmp, res);
+
+		// 2
+		tmp = spu_and(and3, vector);
+		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -1);
+		res = spu_xor(tmp, res);
+
+		// 3
+		tmp = spu_and(and4, vector);
+		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
+		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -1);
+		res = spu_xor(tmp, res);
+
+		// 4
+		tmp = spu_and(and3, vector);
+		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -2);
+		res = spu_xor(tmp, res);
+	
+		// 5
+		tmp = spu_and(and4, vector);
+		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
+		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -2);
+		res = spu_xor(tmp, res);
+
+		// 6
+		tmp = spu_and(and4, vector);
+		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -3);
+		res = spu_xor(tmp, res);
+		
+		// 7
+		tmp = spu_and(and4, vector);
+		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
+		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -3);
+		res = spu_xor(tmp, res);
+
+		result[j]   = res[0];
+		result[j+1] = res[1];
+		result[j+2] = res[1];
+		result[j+3] = res[1];
+	}
 }
