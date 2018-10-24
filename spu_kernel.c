@@ -37,12 +37,16 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	
 	puts("~~~~~ KERNEL AREA ~~~~~");
 
-	int digits = 16;
-	for(i=0; i<digits; i+=2){
-		multiply(a+i, b+i, t_tmp+i, u+i, v+i, w+i);
+	for(i=0; i<16; i++)
+		printf("%d : %x\n", i, a[0][i]);
+
+
+	int digits = 4;
+	for(i=0; i<digits; i++){
+		multiply(a+i, b+i, t_tmp+(i*2), u+(i*2), v+(i*2), w+(i*2));
 	}
 
-	for(i=0; i<8; i++){
+	for(i=7; i>=0; i--){
 		printf("%x ", t_tmp[0][i]);
 	}
 	puts("");
@@ -53,7 +57,7 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 
 	combine_16bit(t_tmp, t);
 
-	mfc_put(t, argp, sizeof(t), 0, 0, 0);
+	mfc_put(t, argp+(8192), 8192, 0, 0, 0);
 	mfc_write_tag_mask(1<<0);
 	mfc_read_tag_status_all();
 
@@ -75,8 +79,10 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 	vec_short8 b0 = vec_b[0];
 	//vec_short8 b1 = vec_b[1];
 
-	vec_uchar16 pat_fed = {8,9,8,9,10,11,10,11,12,13,12,13,14,15,14,15};
-	vec_uchar16 pat_765 = {0,1,0,1,2,3,2,3,4,5,4,5,6,7,6,7};
+	//vec_uchar16 pat_fed = {8,9,8,9,10,11,10,11,12,13,12,13,14,15,14,15};
+	//vec_uchar16 pat_765 = {0,1,0,1,2,3,2,3,4,5,4,5,6,7,6,7};
+	vec_uchar16 pat_fed = {0x80,0x80,14,15,0x80,0x80,12,13,0x80,0x80,10,11,0x80,0x80,8,9 };
+	vec_uchar16 pat_765 = {0x80,0x80,6,7,0x80,0x80,4,5,0x80,0x80,2,3,0x80,0x80,0,1};
 	vec_uchar16 pat_000 = {0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1};
 	vec_uchar16 pat_111 = {2,3,2,3,2,3,2,3,2,3,2,3,2,3,2,3};
 	vec_uchar16 pat_222 = {4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5};
@@ -105,6 +111,10 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 	vec_short8 b05 = spu_shuffle(b0, b0, pat_555);
 	//vec_short8 b11 = spu_shuffle(b1, b1, pat_444);
 	//vec_short8 b15 = spu_shuffle(b1, b1, pat_444);
+
+	printf("0t ==== %x %x %x %x\n", t[0][0], t[0][1], t[0][2], t[0][3]);
+	printf("1t ==== %x %x %x %x\n", t[0][4], t[0][5], t[0][6], t[0][7]);
+	printf("2t ==== %x %x %x %x\n", t[0][8], t[0][9], t[0][10], t[0][11]);
 
 	// H
 	t[0] = spu_madd(a0l, b00, t[0]);
@@ -144,6 +154,9 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 	w[2] = spu_madd(a0h, b07, w[2]);
 
 
+	printf("t0 ==== %x %x %x %x\n", t[0][0], t[0][1], t[0][2], t[0][3]);
+	printf("t1 ==== %x %x %x %x\n", t[0][4], t[0][5], t[0][6], t[0][7]);
+	printf("t2 ==== %x %x %x %x\n", t[0][8], t[0][9], t[0][10], t[0][11]);
 }
 
 
@@ -193,6 +206,7 @@ void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w){
 //void combine_16bit(int32_t *data, int32_t *result){
 void combine_16bit(vec_int4 *data, int32_t *result){
 
+/*
 	vec_int4 and1 = {0, 0, 0, 0xfff};
 	vec_int4 and2 = {0, 0, 0, 0xfff0000};
 	vec_int4 and3 = {0, 0, 0xfff, 0};
@@ -201,60 +215,93 @@ void combine_16bit(vec_int4 *data, int32_t *result){
 	vec_int4 and6 = {0, 0xfff0000, 0, 0};
 	vec_int4 and7 = {0xfff, 0, 0, 0};
 	vec_int4 and8 = {0xfff0000, 0, 0, 0};
+*/	
+	vec_uchar16 pat_rev = {14,15,12,13,10,11,8,9,6,7,4,5,2,3,0,1};
+	
+	vec_short8 and1 = {0, 0, 0, 0, 0, 0, 0, 0xfff};
+	vec_short8 and2 = {0, 0, 0, 0, 0, 0, 0xff, 0xf000};
+	vec_short8 and3 = {0, 0, 0, 0, 0, 0xf, 0xff00, 0};
+	vec_short8 and4 = {0, 0, 0, 0, 0, 0xfff0, 0, 0};
+	vec_short8 and5 = {0, 0, 0, 0, 0xfff, 0, 0, 0};
+	vec_short8 and6 = {0, 0, 0, 0xff, 0xf000, 0, 0, 0};
+	vec_short8 and7 = {0, 0, 0xf, 0xff00, 0, 0, 0, 0};
+	vec_short8 and8 = {0, 0, 0xfff0, 0, 0, 0, 0, 0};
 
 	int i, j;
-	int digits = 16;
+	int digits = 8;
 
-	vec_int4 tmp, res;
+	vec_short8 tmp, res;
 	
+	for(i=15; i>=0; i--){
+		printf("%x ", data[0][i]);
+	}
+	puts("");
+	/*
+	qword a, b;
+	unsigned int count = 4;
+	a = si_rotqmbii(a,-4);
+	tmp = si_rotqmbii(tmp,-4);
+	b = si_rotqmbyi(b, -1);
+	tmp = si_rotqmbyi(tmp, -1);
+*/
 	for(i=0, j=0; j<digits; i++, j+=3){
 
-		vec_int4 vector = data[i];
+		vec_short8 vector = (vec_short8)data[i];
+
+		vector = spu_shuffle(vector, vector, pat_rev);
+
+		printf("vector = %04x %04x %04x %04x %04x %04x %04x %04x\n", vector[0], vector[1], vector[2], vector[3], vector[4], vector[5], vector[6], vector[7]);
 
 		// 0
 		res = spu_and(and1, vector);
+		printf("res0 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 
 		// 1
-		tmp = spu_and(and2, vector);
-		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
-		res = spu_xor(tmp, res);
+		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
+		res = spu_xor(res, spu_and(and2, vector));
+		printf("res1 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 
 		// 2
-		tmp = spu_and(and3, vector);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -1);
-		res = spu_xor(tmp, res);
+		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
+		res = spu_xor(res, spu_and(and3, vector));
+		printf("res2 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 
 		// 3
-		tmp = spu_and(and4, vector);
-		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -1);
-		res = spu_xor(tmp, res);
+		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
+		res = spu_xor(res, spu_and(and4, vector));
+		printf("res3 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 
 		// 4
-		tmp = spu_and(and3, vector);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -2);
-		res = spu_xor(tmp, res);
+		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
+		res = spu_xor(res, spu_and(and5, vector));
+		printf("res4 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 	
 		// 5
-		tmp = spu_and(and4, vector);
-		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -2);
-		res = spu_xor(tmp, res);
+		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
+		res = spu_xor(res, spu_and(and6, vector));
+		printf("res5 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 
 		// 6
-		tmp = spu_and(and4, vector);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -3);
-		res = spu_xor(tmp, res);
+		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
+		res = spu_xor(res, spu_and(and7, vector));
+		printf("res6 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 		
 		// 7
-		tmp = spu_and(and4, vector);
-		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp, -3);
-		res = spu_xor(tmp, res);
+		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
+		res = spu_xor(res, spu_and(and8, vector));
+		printf("res7 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 
-		result[j]   = res[0];
-		result[j+1] = res[1];
-		result[j+2] = res[1];
-		result[j+3] = res[1];
+
+		result[j]   = ((vec_int4)res)[3];
+		result[j+1] = ((vec_int4)res)[2];
+		result[j+2] = ((vec_int4)res)[1];
+	
+		printf("%x %x %x\n", result[j+2], result[j+1], result[j]);
 	}
+
+	for(i=0; i<8; i++){
+		printf("%08x ", result[i]);
+	}
+	puts("");
+
 }
