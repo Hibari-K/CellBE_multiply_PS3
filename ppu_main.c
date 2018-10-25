@@ -34,7 +34,7 @@ int main(unsigned long long spe_id, unsigned long long argp, unsigned long long 
 	b = &a[1024];
 	t = &a[2048];
 
-	printf("a = %x, b = %x, sub = %d\n", a, b, b-a);
+	//printf("a = %x, b = %x, sub = %d\n", a, b, b-a);
 
 	if(!(a && b && t)){
 		puts("calloc error");
@@ -45,7 +45,7 @@ int main(unsigned long long spe_id, unsigned long long argp, unsigned long long 
 
 	int i, j;
 	for(i=0; i<4; i++){
-		a[i] = 0x11111111;
+		a[i] = 0x33221100 + (i*0x44444444);
 		b[i] = 0x11111111;
 	}
 
@@ -73,25 +73,14 @@ int main(unsigned long long spe_id, unsigned long long argp, unsigned long long 
 	if(retval < 0)
 		error_ret("spe_contect_run");
 
-	for(i=0; i<16; i++)
-		printf("%d : %x\n", i, a[i]);
-
 	entry_point = SPE_DEFAULT_ENTRY;
 	retval = spe_context_run(spe, &entry_point, 0, b, NULL, &stop_info);
 	if(retval < 0)
 		error_ret("spe_contect_run");
 
 	
-/*
-	puts("##### Here's PPU space #####");
-	for(i=0; i<16; i++)
-		printf("%x ", a[i]);
-	puts("");
-	for(i=0; i<16; i++)
-		printf("%x ", b[i]);
-	puts("");
-*/
-
+	
+	
 	// multiply kernel
 	retval = spe_program_load(spe, &spu_kernel);
 	if(retval)
@@ -108,7 +97,8 @@ int main(unsigned long long spe_id, unsigned long long argp, unsigned long long 
 		printf("%08x", t[i]);
 	puts("");
 
-	puts("0x123456789abcdf0123456789abcdf0120fedcba987654320fedcba987654321");
+	puts("0x110feca73fb60a3c4c3a05af369bdeffeef01358c049f5c3b3c5fa50c9642100");
+	//puts("0x01234567 89abcdf0 12345678 9abcdf01 20fedcba 98765432 0fedcba9 87654321");
 
 	retval = spe_context_destroy(spe);
 	if(retval)

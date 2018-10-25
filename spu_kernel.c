@@ -37,8 +37,6 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	
 	puts("~~~~~ KERNEL AREA ~~~~~");
 
-	a[0][10] = b[0][10] = 0x11;
-
 	for(i=0; i<16; i++)
 		printf("%d : %x\n", i, a[0][i]);
 
@@ -53,12 +51,7 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 		}
 	}
 
-	for(i=7; i>=0; i--){
-		printf("%x ", t_tmp[0][i]);
-	}
-	puts("");
-
-	// ##########  ############
+	// ########## calc carry  ############
 
 	calc_carry(t_tmp, u, v, w);
 
@@ -86,18 +79,6 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 	vec_short8 b0 = vec_b[0];
 	//vec_short8 b1 = vec_b[1];
 
-	int i;
-
-	printf("a0 = ");
-	for(i=0; i<8; i++)
-		printf("%x ", vec_a[0][i]);
-	puts("");
-
-
-
-
-	//vec_uchar16 pat_fed = {8,9,8,9,10,11,10,11,12,13,12,13,14,15,14,15};
-	//vec_uchar16 pat_765 = {0,1,0,1,2,3,2,3,4,5,4,5,6,7,6,7};
 	vec_uchar16 pat_fed = {0x80,0x80,8,9,0x80,0x80,10,11,0x80,0x80,12,13,0x80,0x80,14,15 };
 	vec_uchar16 pat_765 = {0x80,0x80,0,1,0x80,0x80,2,3,0x80,0x80,4,5,0x80,0x80,6,7};
 	vec_uchar16 pat_000 = {0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1};
@@ -129,17 +110,14 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 	//vec_short8 b11 = spu_shuffle(b1, b1, pat_444);
 	//vec_short8 b15 = spu_shuffle(b1, b1, pat_444);
 
-	//printf("0t ==== %x %x %x %x\n", t[0][0], t[0][1], t[0][2], t[0][3]);
-	//printf("1t ==== %x %x %x %x\n", t[0][4], t[0][5], t[0][6], t[0][7]);
-	//printf("2t ==== %x %x %x %x\n", t[0][8], t[0][9], t[0][10], t[0][11]);
-	printf("t0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", t[0][0], t[0][1], t[0][2], t[0][3], t[0][4], t[0][5], t[0][6], t[0][7], t[0][8], t[0][9], t[0][10], t[0][11]);
-	printf("u0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", u[0][0], u[0][1], u[0][2], u[0][3], u[0][4], u[0][5], u[0][6], u[0][7], u[0][8], u[0][9], u[0][10], u[0][11]);
-	printf("v0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", v[0][0], v[0][1], v[0][2], v[0][3], v[0][4], v[0][5], v[0][6], v[0][7], v[0][8], v[0][9], v[0][10], v[0][11]);
-	printf("w0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", w[0][0], w[0][1], w[0][2], w[0][3], w[0][4], w[0][5], w[0][6], w[0][7], w[0][8], w[0][9], w[0][10], w[0][11]);
+	// For debug
+	//printf("t0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", t[0][0], t[0][1], t[0][2], t[0][3], t[0][4], t[0][5], t[0][6], t[0][7], t[0][8], t[0][9], t[0][10], t[0][11]);
+	//printf("u0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", u[0][0], u[0][1], u[0][2], u[0][3], u[0][4], u[0][5], u[0][6], u[0][7], u[0][8], u[0][9], u[0][10], u[0][11]);
+	//printf("v0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", v[0][0], v[0][1], v[0][2], v[0][3], v[0][4], v[0][5], v[0][6], v[0][7], v[0][8], v[0][9], v[0][10], v[0][11]);
+	//printf("w0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", w[0][0], w[0][1], w[0][2], w[0][3], w[0][4], w[0][5], w[0][6], w[0][7], w[0][8], w[0][9], w[0][10], w[0][11]);
 
 	// H
 	t[0] = spu_madd(a0l, b00, t[0]);
-	printf("after  0t ==== %x %x %x %x\n", t[0][0], t[0][1], t[0][2], t[0][3]);
 	// G
 	u[0] = spu_madd(a0l, b01, u[0]);
 	// A + a
@@ -175,14 +153,6 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 	// e
 	w[2] = spu_madd(a0h, b07, w[2]);
 
-
-	printf("t0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", t[0][0], t[0][1], t[0][2], t[0][3], t[0][4], t[0][5], t[0][6], t[0][7], t[0][8], t[0][9], t[0][10], t[0][11]);
-	printf("u0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", u[0][0], u[0][1], u[0][2], u[0][3], u[0][4], u[0][5], u[0][6], u[0][7], u[0][8], u[0][9], u[0][10], u[0][11]);
-	printf("v0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", v[0][0], v[0][1], v[0][2], v[0][3], v[0][4], v[0][5], v[0][6], v[0][7], v[0][8], v[0][9], v[0][10], v[0][11]);
-	printf("w0 ==== %x %x %x %x %x %x %x %x %x %x %x %x\n", w[0][0], w[0][1], w[0][2], w[0][3], w[0][4], w[0][5], w[0][6], w[0][7], w[0][8], w[0][9], w[0][10], w[0][11]);
-	//printf("1t ==== %x %x %x %x\n", t[1][0], t[1][1], t[1][2], t[1][3]);
-	//printf("t1 ==== %x %x %x %x\n", t[0][4], t[0][5], t[0][6], t[0][7]);
-	//printf("t2 ==== %x %x %x %x\n", t[0][8], t[0][9], t[0][10], t[0][11]);
 }
 
 
@@ -225,27 +195,12 @@ void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w){
 		t_short[0][i] = tmp & and12;
 		tmp >>= 12;
 	}
-	
-	printf("after calc carry\n");
-	for(i=16; i>=0; i--)
-		printf("%x ", t_short[0][i]);
-	puts("");
 }
 
 
 //void combine_16bit(int32_t *data, int32_t *result){
 void combine_16bit(vec_int4 *data, int32_t *result){
 
-/*
-	vec_int4 and1 = {0, 0, 0, 0xfff};
-	vec_int4 and2 = {0, 0, 0, 0xfff0000};
-	vec_int4 and3 = {0, 0, 0xfff, 0};
-	vec_int4 and4 = {0, 0, 0xfff0000, 0};
-	vec_int4 and5 = {0, 0xfff, 0, 0};
-	vec_int4 and6 = {0, 0xfff0000, 0, 0};
-	vec_int4 and7 = {0xfff, 0, 0, 0};
-	vec_int4 and8 = {0xfff0000, 0, 0, 0};
-*/	
 	vec_uchar16 pat_rev = {14,15,12,13,10,11,8,9,6,7,4,5,2,3,0,1};
 	
 	vec_short8 and1 = {0, 0, 0, 0, 0, 0, 0, 0xfff};
@@ -262,18 +217,6 @@ void combine_16bit(vec_int4 *data, int32_t *result){
 
 	vec_short8 tmp, res;
 	
-	for(i=15; i>=0; i--){
-		printf("%x ", data[0][i]);
-	}
-	puts("");
-	/*
-	qword a, b;
-	unsigned int count = 4;
-	a = si_rotqmbii(a,-4);
-	tmp = si_rotqmbii(tmp,-4);
-	b = si_rotqmbyi(b, -1);
-	tmp = si_rotqmbyi(tmp, -1);
-*/
 	for(i=0, j=0; j<digits; i++, j+=3){
 
 		vec_short8 vector = (vec_short8)data[i];
@@ -319,19 +262,13 @@ void combine_16bit(vec_int4 *data, int32_t *result){
 		// 7
 		vector = (vec_short8)si_rotqmbii((qword)vector,-4);
 		res = spu_xor(res, spu_and(and8, vector));
-		printf("res7 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
+		//printf("res7 = %x %x %x %x %x %x %x %x\n", res[0], res[1], res[2], res[3], res[4], res[5], res[6], res[7]);
 
 
 		result[j]   = ((vec_int4)res)[3];
 		result[j+1] = ((vec_int4)res)[2];
 		result[j+2] = ((vec_int4)res)[1];
 	
-		printf("%x %x %x\n", result[j+2], result[j+1], result[j]);
+		//printf("%x %x %x\n", result[j+2], result[j+1], result[j]);
 	}
-
-	for(i=0; i<8; i++){
-		printf("%08x ", result[i]);
-	}
-	puts("");
-
 }

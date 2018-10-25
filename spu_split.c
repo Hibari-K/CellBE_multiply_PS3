@@ -8,14 +8,16 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 
 
 	// initialize
-	vec_int4 and1 = {0xfff00000, 0, 0, 0};
-	vec_int4 and2 = {0xfff00, 0, 0, 0};
-	vec_int4 and3 = {0xff, 0xf0000000, 0, 0};
-	vec_int4 and4 = {0, 0xfff0000, 0, 0};
-	vec_int4 and5 = {0, 0xfff0, 0, 0};
-	vec_int4 and6 = {0, 0xf, 0xff000000, 0};
-	vec_int4 and7 = {0, 0, 0xfff000, 0};
-	vec_int4 and8 = {0, 0, 0xfff, 0};
+	vec_int4 and1 = {0, 0, 0, 0xfff};
+	vec_int4 and2 = {0, 0, 0, 0xfff000};
+	vec_int4 and3 = {0, 0, 0xf, 0xff000000};
+	vec_int4 and4 = {0, 0, 0xfff0, 0};
+	vec_int4 and5 = {0, 0, 0xfff0000, 0};
+	vec_int4 and6 = {0, 0xff, 0xf0000000, 0};
+	vec_int4 and7 = {0, 0xfff00, 0, 0};
+	vec_int4 and8 = {0, 0xfff00000, 0, 0};
+
+	vec_uchar16 pat_short = {14,15,12,13,10,11,8,9,6,7,4,5,2,3,0,1};
 
 	int32_t data[1024] __attribute__ ((aligned(128)));
 	vec_int4 result[256] __attribute__ ((aligned(128)));
@@ -41,50 +43,52 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	// it is better to change this algorithm
 	for(i=0, j=0; i<digits; i+=3, j++){
 		
-		vec_int4 vector = {data[i], data[i+1], data[i+2], data[i+3]};
+		vec_int4 vector = {data[i+3], data[i+2], data[i+1], data[i]};
 		//vec_int4 vector = {data[i], data[i+1], data[i+2], data[i+3]};
+		//tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
 
 		// 0
 		res = spu_and(and1, vector);
-		res = (vec_int4)si_rotqmbii((qword)res,-4);
 
 		// 1
 		tmp = spu_and(and2, vector);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp,-1);
+		tmp = spu_slqw(tmp, 4);
 		res = spu_xor(tmp, res);
 
 		// 2
 		tmp = spu_and(and3, vector);
-		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp,-1);
+		tmp = spu_slqwbyte(tmp, 1);
 		res = spu_xor(tmp, res);
 
 		// 3
 		tmp = spu_and(and4, vector);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp,-2);
+		tmp = spu_slqwbyte(tmp, 1);
+		tmp = spu_slqw(tmp, 4);
 		res = spu_xor(tmp, res);
 
 		// 4
 		tmp = spu_and(and5, vector);
-		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp,-2);
+		tmp = spu_slqwbyte(tmp, 2);
 		res = spu_xor(tmp, res);
 
 		// 5
 		tmp = spu_and(and6, vector);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp,-3);
+		tmp = spu_slqwbyte(tmp, 2);
+		tmp = spu_slqw(tmp, 4);
 		res = spu_xor(tmp, res);
 
 		// 6
 		tmp = spu_and(and7, vector);
-		tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp,-3);
+		tmp = spu_slqwbyte(tmp, 3);
 		res = spu_xor(tmp, res);
 
 		// 7
 		tmp = spu_and(and8, vector);
-		tmp = (vec_int4)si_rotqmbyi((qword)tmp,-4);
+		tmp = spu_slqwbyte(tmp, 3);
+		tmp = spu_slqw(tmp, 4);
 		res = spu_xor(tmp, res);
+
+		res = spu_shuffle(res, res, pat_short);
 
 		result[j] = res;
 	}
