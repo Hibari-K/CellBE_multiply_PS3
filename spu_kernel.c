@@ -5,12 +5,14 @@
 
 
 void multiply(vec_short8 *a, vec_short8 *b, vec_int4 *t, vec_int4*, vec_int4*, vec_int4*);
-void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w);
-//void combine_16bit(int32_t *data, int32_t *result);
-void combine_16bit(vec_int4 *data, int32_t *result);
+void split_12bit(int32_t *data, vec_int4 *result, int digits);
+void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w, int digits);
+void combine_16bit(vec_int4 *data, int32_t *result, int digits);
 
 int main(unsigned long long spu_id, unsigned long long argp, unsigned long long envp){
 
+	int32_t a_data[256] __attribute__ ((aligned(128)));
+	int32_t b_data[256] __attribute__ ((aligned(128)));
 	vec_short8 a[256] __attribute__ ((aligned(128)));
 	vec_short8 b[256] __attribute__ ((aligned(128)));
 	int32_t *t __attribute__ ((aligned(128)));
@@ -21,27 +23,26 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	vec_int4 *v = calloc(512*16, sizeof(long));
 	vec_int4 *w = calloc(512*16, sizeof(long));
 
-	mfc_get(a, argp, sizeof(a), 0, 0, 0);
-	mfc_get(b, argp+(4096), sizeof(b), 0, 0, 0);
+	mfc_get(a_data, argp, sizeof(a_data), 0, 0, 0);
+	mfc_get(b_data, argp+(4096), sizeof(b_data), 0, 0, 0);
 	mfc_write_tag_mask(1<<0);
 	mfc_read_tag_status_all();
 	
 	int i,j;
-	/*
-	for(i=0; i<1; i++){
-		for(j=0; j<8; j++)
-			printf("%x ", a[i][j]);
-		puts("");
-	}
-*/
 	
 	puts("~~~~~ KERNEL AREA ~~~~~");
 
-	for(i=0; i<16; i++)
-		printf("%d : %x\n", i, a[0][i]);
+	int digits, offset;
 
-	int digits = 3;
-	int offset;
+	// check length
+	for(i=95; a_data[i] == 0; i--);
+	digits = i+1;
+	digits *= 3;
+
+	// ######### split 12bit #########
+	split_12bit(a_data, (vec_int4*)a, digits);
+	split_12bit(b_data, (vec_int4*)b, digits);
+
 
 	for(i=0; i<digits; i++){
 		for(j=0; j<digits; j++){
@@ -53,9 +54,9 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 
 	// ########## calc carry  ############
 
-	calc_carry(t_tmp, u, v, w);
+	calc_carry(t_tmp, u, v, w, digits*2);
 
-	combine_16bit(t_tmp, t);
+	combine_16bit(t_tmp, t, digits);
 
 	mfc_put(t, argp+(8192), 8192, 0, 0, 0);
 	mfc_write_tag_mask(1<<0);
@@ -155,8 +156,82 @@ void multiply(vec_short8 *vec_a, vec_short8 *vec_b, vec_int4 *t, vec_int4* u, ve
 
 }
 
+void split_12bit(int32_t *data, vec_int4 *result, int digits){
 
-void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w){
+	// initialize
+	vec_int4 and1 = {0, 0, 0, 0xfff};
+	vec_int4 and2 = {0, 0, 0, 0xfff000};
+	vec_int4 and3 = {0, 0, 0xf, 0xff000000};
+	vec_int4 and4 = {0, 0, 0xfff0, 0};
+	vec_int4 and5 = {0, 0, 0xfff0000, 0};
+	vec_int4 and6 = {0, 0xff, 0xf0000000, 0};
+	vec_int4 and7 = {0, 0xfff00, 0, 0};
+	vec_int4 and8 = {0, 0xfff00000, 0, 0};
+
+	vec_uchar16 pat_short = {14,15,12,13,10,11,8,9,6,7,4,5,2,3,0,1};
+
+	int i, j;
+	//int digits = 16;
+	vec_int4 tmp, res;
+
+	digits *= 2;
+	
+	// caution : PS3 is big-endian architecture
+	// so many data dependency
+	// it is better to change this algorithm
+	for(i=0, j=0; i<=digits; i+=3, j++){
+		
+		vec_int4 vector = {data[i+3], data[i+2], data[i+1], data[i]};
+
+		// 0
+		res = spu_and(and1, vector);
+
+		// 1
+		tmp = spu_and(and2, vector);
+		tmp = spu_slqw(tmp, 4);
+		res = spu_xor(tmp, res);
+
+		// 2
+		tmp = spu_and(and3, vector);
+		tmp = spu_slqwbyte(tmp, 1);
+		res = spu_xor(tmp, res);
+
+		// 3
+		tmp = spu_and(and4, vector);
+		tmp = spu_slqwbyte(tmp, 1);
+		tmp = spu_slqw(tmp, 4);
+		res = spu_xor(tmp, res);
+
+		// 4
+		tmp = spu_and(and5, vector);
+		tmp = spu_slqwbyte(tmp, 2);
+		res = spu_xor(tmp, res);
+
+		// 5
+		tmp = spu_and(and6, vector);
+		tmp = spu_slqwbyte(tmp, 2);
+		tmp = spu_slqw(tmp, 4);
+		res = spu_xor(tmp, res);
+
+		// 6
+		tmp = spu_and(and7, vector);
+		tmp = spu_slqwbyte(tmp, 3);
+		res = spu_xor(tmp, res);
+
+		// 7
+		tmp = spu_and(and8, vector);
+		tmp = spu_slqwbyte(tmp, 3);
+		tmp = spu_slqw(tmp, 4);
+		res = spu_xor(tmp, res);
+
+		res = spu_shuffle(res, res, pat_short);
+
+		result[j] = res;
+	}
+}
+
+
+void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w, int digits){
 
 	vec_short8 *t_short = (vec_short8 *)&t[0][0];
 	vec_short8 *u_short = (vec_short8 *)&u[0][0];
@@ -167,7 +242,6 @@ void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w){
 	int32_t and12 = 0xfff;
 
 	int i;
-	int digits = 32;
 
 	// 0
 	tmp = t[0][0];
@@ -199,7 +273,7 @@ void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w){
 
 
 //void combine_16bit(int32_t *data, int32_t *result){
-void combine_16bit(vec_int4 *data, int32_t *result){
+void combine_16bit(vec_int4 *data, int32_t *result, int digits){
 
 	vec_uchar16 pat_rev = {14,15,12,13,10,11,8,9,6,7,4,5,2,3,0,1};
 	
@@ -213,7 +287,6 @@ void combine_16bit(vec_int4 *data, int32_t *result){
 	vec_short8 and8 = {0, 0, 0xfff0, 0, 0, 0, 0, 0};
 
 	int i, j;
-	int digits = 8;
 
 	vec_short8 tmp, res;
 	

@@ -13,6 +13,7 @@ int main(int argc, char** argv){
 
 	if(argc != 2){
 		printf("Usage : %s num\n", argv[0]);
+		puts("1028->32, 2048->64, 3072->96");
 		exit(0);
 	}
 
@@ -28,7 +29,7 @@ int main(int argc, char** argv){
 		exit(0);
 	}
 
-	int temp = 0x12345678;
+	int temp = 0x11223344;
 	char *tmpa = str1;
 	char *tmpb = str2;
 
@@ -41,6 +42,20 @@ int main(int argc, char** argv){
 
 	gmp_mul(str1, str2, LOOP);
 
+	
+	FILE *result = fopen("result_gmp.txt", "r");
+	if(result == NULL){
+		puts("file open error");
+		exit(0);
+	}
+
+	char str[512];
+	while(fgets(str, 512, result) != NULL) {
+		printf("%s", str);
+	}
+
+	fclose(result);
+	
 	free(str1);
 	free(str2);
 
@@ -86,7 +101,7 @@ void gmp_mul(char* arg1, char* arg2, double LOOP){
 
 	time = (total / LOOP*1.0)*1000*1000;
 	//printf("GMP\t\t: Average time = %lf [us]\n", time);
-    printf("%lf,", time);
+    //printf("%lf,", time);
 
 
 	FILE *result = fopen("result_gmp.txt", "w");
