@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<libspe2.h>
+#include<sys/time.h>
 //#include<spu_mfcio.h>
 
 extern spe_program_handle_t spu_split;
@@ -32,6 +33,8 @@ int main(int argc, char **argv){
 	}
 
 	int lp = atoi(argv[1]);
+	double LOOP = lp * 1.0;
+
 	if(lp > 96){
 		printf("%d is too large.", lp);
 		exit(0);
@@ -105,12 +108,39 @@ int main(int argc, char **argv){
 	if(retval)
 		error_ret("spe_context_create");
 	
-	entry_point = SPE_DEFAULT_ENTRY;
-	retval = spe_context_run(spe, &entry_point, 0, a, NULL, &stop_info);
-	if(retval < 0)
-		error_ret("spe_context_run");
+	struct timeval s, e;
+	double ptime = 0.0;
+	double total = 0.0;
 	
+	//for(i=0; i<LOOP; i++){
+
+	//	gettimeofday(&s, NULL);
+
+		entry_point = SPE_DEFAULT_ENTRY;
+		retval = spe_context_run(spe, &entry_point, 0, a, NULL, &stop_info);
+		if(retval < 0)
+			error_ret("spe_context_run");
+
+	//	gettimeofday(&e, NULL);
+	//}
 	
+/*	
+	for(i=0; i<LOOP; i++){
+
+		gettimeofday(&s, NULL);
+
+		entry_point = SPE_DEFAULT_ENTRY;
+		retval = spe_context_run(spe, &entry_point, 0, a, NULL, &stop_info);
+		if(retval < 0)
+			error_ret("spe_context_run");
+
+		gettimeofday(&e, NULL);
+		total += (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6;
+	}
+	
+	ptime = (total / LOOP) * 1000 * 1000;
+	printf("PPU Time = %lf\n", ptime);
+*/
 	for(i=lp*2-1; i>=0; i--)
 		printf("%08x", t[i]);
 	puts("");

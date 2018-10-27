@@ -2,7 +2,7 @@
 #include<stdlib.h>
 #include<spu_intrinsics.h>
 #include<spu_mfcio.h>
-
+#include<sys/time.h>
 
 void multiply(vec_short8 *a, vec_short8 *b, vec_int4 *t, vec_int4*, vec_int4*, vec_int4*);
 void split_12bit(int32_t *data, vec_int4 *result, int digits);
@@ -29,9 +29,6 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	mfc_read_tag_status_all();
 	
 	int i,j;
-	
-	puts("~~~~~ KERNEL AREA ~~~~~");
-
 	int digits, offset;
 
 	// check length
@@ -39,24 +36,53 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	digits = i+1;
 	digits *= 3;
 
-	// ######### split 12bit #########
+	// practice
 	split_12bit(a_data, (vec_int4*)a, digits);
 	split_12bit(b_data, (vec_int4*)b, digits);
-
-
 	for(i=0; i<digits; i++){
 		for(j=0; j<digits; j++){
-
 			offset = (i+j) * 2;		
 			multiply(a+j, b+i, t_tmp+offset, u+offset, v+offset, w+offset);
 		}
 	}
-
-	// ########## calc carry  ############
-
 	calc_carry(t_tmp, u, v, w, digits*2);
-
 	combine_16bit(t_tmp, t, digits);
+
+	struct timeval s, e;
+	double total = 0.0;
+	double stime = 0.0;
+	int k;
+	double loop = 30.0;
+	
+
+	for(k=0; k<loop; k++){
+
+		gettimeofday(&s, NULL);
+		// ######### split 12bit #########
+		split_12bit(a_data, (vec_int4*)a, digits);
+		split_12bit(b_data, (vec_int4*)b, digits);
+
+
+		for(i=0; i<digits; i++){
+			for(j=0; j<digits; j++){
+
+				offset = (i+j) * 2;		
+				multiply(a+j, b+i, t_tmp+offset, u+offset, v+offset, w+offset);
+			}
+		}
+
+		// ########## calc carry  ############
+
+		calc_carry(t_tmp, u, v, w, digits*2);
+
+		combine_16bit(t_tmp, t, digits);
+
+		gettimeofday(&e, NULL);
+		total += (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6;
+	}
+
+	stime = (total/loop) * 1000 * 1000;
+	printf("SPU Time = %lf\n", stime);
 
 	mfc_put(t, argp+(8192), 8192, 0, 0, 0);
 	mfc_write_tag_mask(1<<0);
