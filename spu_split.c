@@ -31,21 +31,12 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	vec_int4 tmp, res;
 
 	
-	/* DEBUG */
-	/*
-	printf("#######IN SPLIT##########");
-	for(i=0; i<8; i++)
-		printf("%x ", data[i]);
-	puts("");
-*/
-
+	// caution : PS3 is big-endian architecture
 	// so many data dependency
 	// it is better to change this algorithm
 	for(i=0, j=0; i<digits; i+=3, j++){
 		
 		vec_int4 vector = {data[i+3], data[i+2], data[i+1], data[i]};
-		//vec_int4 vector = {data[i], data[i+1], data[i+2], data[i+3]};
-		//tmp = (vec_int4)si_rotqmbii((qword)tmp,-4);
 
 		// 0
 		res = spu_and(and1, vector);
@@ -93,12 +84,6 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 		result[j] = res;
 	}
 
-
-/*
-	for(i=0; i<32; i++)
-		printf("%x ", result[0][i]);
-	puts("");
-*/
 
 	mfc_put(result, argp, sizeof(result), 0, 0, 0);
 	mfc_write_tag_mask(1<<0);

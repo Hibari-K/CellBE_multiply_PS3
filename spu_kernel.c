@@ -4,10 +4,14 @@
 #include<spu_mfcio.h>
 #include<sys/time.h>
 
+#define LoWord(result)  result & 0xffffffff
+#define HiWord(result) (result & 0xffffffff00000000) >> 32
+
 void multiply(vec_short8 *a, vec_short8 *b, vec_int4 *t, vec_int4*, vec_int4*, vec_int4*);
 void split_12bit(int32_t *data, vec_int4 *result, int digits);
 void calc_carry(vec_int4 *t, vec_int4 *u, vec_int4 *v, vec_int4 *w, int digits);
 void combine_16bit(vec_int4 *data, int32_t *result, int digits);
+void BigMultiply(unsigned int* A, unsigned int* B, unsigned int* T, int loop);
 
 int main(unsigned long long spu_id, unsigned long long argp, unsigned long long envp){
 
@@ -54,14 +58,17 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 	int k;
 	double loop = 30.0;
 	
-
 	for(k=0; k<loop; k++){
+
+		for(i=0; i<digits; i++){
+			t[i] = t_tmp[0][i] = u[0][i] = v[0][i] = w[0][i] = 0;
+			a[0][i] = b[0][i] = 0;
+		}
 
 		gettimeofday(&s, NULL);
 		// ######### split 12bit #########
 		split_12bit(a_data, (vec_int4*)a, digits);
 		split_12bit(b_data, (vec_int4*)b, digits);
-
 
 		for(i=0; i<digits; i++){
 			for(j=0; j<digits; j++){
@@ -83,6 +90,20 @@ int main(unsigned long long spu_id, unsigned long long argp, unsigned long long 
 
 	stime = (total/loop) * 1000 * 1000;
 	printf("SPU Time = %lf\n", stime);
+
+	total = 0.0;
+	for(k=0; k<loop; k++){
+		for(i=0; i<digits*2; i++)
+			t[i] = 0;
+		
+		gettimeofday(&s, NULL);
+		BigMultiply(a_data, b_data, t, digits);
+		gettimeofday(&e, NULL);
+		total += (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6;
+	}
+	stime = (total/(loop*1.0)) * 1000 * 1000;
+	printf("BigMultiply = %lf\n", stime);
+
 
 	mfc_put(t, argp+(8192), 8192, 0, 0, 0);
 	mfc_write_tag_mask(1<<0);
@@ -370,4 +391,21 @@ void combine_16bit(vec_int4 *data, int32_t *result, int digits){
 	
 		//printf("%x %x %x\n", result[j+2], result[j+1], result[j]);
 	}
+}
+
+void BigMultiply(unsigned int* A, unsigned int* B, unsigned int* T, int loop){
+
+    unsigned int i, j, carry;
+    unsigned long long result;
+
+    for(i=0; i<loop; i++){
+    	carry = 0;
+	    for(j=0; j<loop; j++){
+	        result = (unsigned long long)A[j] * B[i] + T[i+j] + carry;
+
+    	    T[i+j] = LoWord(result);
+	        carry = HiWord(result);
+    	}
+	    T[i+j] = carry;
+    }
 }

@@ -4,7 +4,7 @@
 #include<sys/time.h>
 //#include<spu_mfcio.h>
 
-extern spe_program_handle_t spu_split;
+extern spe_program_handle_t spu_bigmul;
 extern spe_program_handle_t spu_kernel;
 
 
@@ -53,8 +53,8 @@ int main(int argc, char **argv){
 
 	int i, j;
 	for(i=0; i<lp; i++){
-		a[i] = 0x11223344;
-		b[i] = 0x11223344;
+		//a[i] = b[i] = 0x11223344;
+		a[i] = b[i] = 0x11111111;
 	}
 
 
@@ -87,8 +87,8 @@ int main(int argc, char **argv){
 
 	if(!spe)
 		error_ret("spe_context_create");
-/*
-	retval = spe_program_load(spe, &spu_split);
+
+	retval = spe_program_load(spe, &spu_bigmul);
 	if(retval)
 		error_ret("spe_program_load");
 
@@ -96,7 +96,7 @@ int main(int argc, char **argv){
 	retval = spe_context_run(spe, &entry_point, 0, a, NULL, &stop_info);
 	if(retval < 0)
 		error_ret("spe_contect_run");
-
+/*
 	entry_point = SPE_DEFAULT_ENTRY;
 	retval = spe_context_run(spe, &entry_point, 0, b, NULL, &stop_info);
 	if(retval < 0)
